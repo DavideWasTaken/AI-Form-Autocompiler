@@ -15,10 +15,6 @@ Automatically fill out Google Forms using OpenAI's GPT models! This extension al
 ## 🛠️ Installation & Setup
 
 ### 1. Clone or Download the Repository
-```sh
-git clone https://github.com/YOUR_USERNAME/AI-Form-Compiler.git
-cd AI-Form-Compiler
-```
 
 ### 2. Get an OpenAI API Key
 - Sign up at [OpenAI](https://platform.openai.com/) and create an API key.
