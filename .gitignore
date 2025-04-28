@@ -1,0 +1,30 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# macOS folder attributes
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Node modules (if used in the future)
+node_modules/
+
+# VSCode settings (optional, if you use VSCode)
+.vscode/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Other backup and temporary files
+*.swp
+*.swo
+*~
+
+# Ignore build/dist folders (if any in future)
+build/
+dist/
