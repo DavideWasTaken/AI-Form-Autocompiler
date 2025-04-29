@@ -4,7 +4,6 @@
 .LSOverride
 
 # macOS folder attributes
-Icon?
 ._*
 .Spotlight-V100
 .Trashes
