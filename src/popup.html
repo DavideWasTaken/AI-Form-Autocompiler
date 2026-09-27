@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AI Form Autocompiler</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="mark">↳</span>
+      <div>
+        <h1>Form Autocompiler</h1>
+        <p>Your words. The right fields.</p>
+      </div>
+      <span class="badge">LAB</span>
+    </header>
+    <main>
+      <div id="setup" class="notice" hidden>
+        Enable <strong>Allow User Scripts</strong> in this extension’s
+        details.<button id="settings" class="link">
+          Open extension settings
+        </button>
+      </div>
+      <label for="prompt">What should this page contain?</label
+      ><textarea
+        id="prompt"
+        maxlength="6000"
+        placeholder="My name is Davide, I live in Milan. I’m looking for a three-room apartment up to €350,000. Contact me by email…"
+      ></textarea>
+      <div class="row">
+        <div>
+          <label for="provider">AI provider</label
+          ><select id="provider">
+            <option value="groq">Groq</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+        <div class="model">
+          <label for="model">Model</label
+          ><input id="model" maxlength="120" autocomplete="off" />
+        </div>
+      </div>
+      <details id="credentials">
+        <summary>API key <span id="key-status">· needed</span></summary>
+        <div class="key-row">
+          <input
+            type="password"
+            id="api-key"
+            placeholder="Provider API key"
+            autocomplete="off"
+          /><button id="save-key" class="secondary">Save</button
+          ><button id="forget-key" class="link">Forget</button>
+        </div>
+        <p class="hint">
+          Kept for this browser session only. Never included in the page or AI
+          prompt.
+        </p>
+      </details>
+      <button id="fill" class="primary">Fill this page <span>↗</span></button
+      ><button id="cancel" class="secondary" hidden>Cancel generation</button>
+      <div id="status" role="status" aria-live="polite">
+        Ready when you are.
+      </div>
+      <ul id="issues" hidden></ul>
+      <details>
+        <summary>How it works</summary>
+        <p class="hint">
+          The page’s cleaned HTML and your prompt go to the selected AI
+          provider. Its JavaScript runs immediately on this page. Review the
+          populated fields before submitting. Existing answers are preserved
+          unless your prompt asks to replace them.
+        </p>
+        <p class="hint">
+          Experimental. AI-generated code can make mistakes or perform
+          unintended actions. Top-level web pages only; embedded forms and some
+          custom controls are unsupported.
+        </p>
+      </details>
+    </main>
+    <footer>OpenAI + Groq · Bring your own key</footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
