@@ -1,6 +1,6 @@
 # Privacy and execution notes
 
-This document describes the current local implementation. The extension is experimental and executes AI-generated JavaScript on the page after an explicit Fill click.
+This document describes the current implementation. The extension is experimental and executes AI-generated JavaScript on the page after an explicit Fill click.
 
 ## What leaves the browser
 
@@ -42,4 +42,4 @@ Before execution, the extension checks the current tab URL, targets the captured
 
 Verification checks the script’s reported fields. It does not audit every side effect, prove that the page respected a field update, or guarantee that the model obeyed all instructions. A partly successful script can leave edits behind. There is no rollback, no execution-time cancellation, and no mandatory code preview. After 15 seconds without an execution result, the extension reports uncertainty and blocks another fill until a reload. It cannot forcibly interrupt arbitrary JavaScript, especially a synchronous infinite loop. Reloading or navigating also clears the previous completion summary.
 
-Use this personal experimental tool on pages whose data and possible edits you understand. Review the entire result and submit manually. Live Groq evidence covers synthetic fixtures only; it does not establish reliability on every website. Publication remains on hold pending the manual Chrome site-permission check.
+Use this personal experimental tool on pages whose data and possible edits you understand. Review the entire result and submit manually. Live Groq evidence covers synthetic fixtures only; it does not establish reliability on every website. The full native Chrome toolbar/site-permission approval flow remains unverified.

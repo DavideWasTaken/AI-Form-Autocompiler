@@ -1,66 +1,110 @@
+<div align="center">
+
 # AI Form Autocompiler
 
-**Describe what belongs on the page. Let AI fill the fields.**
+### Your words. The right fields.
 
-A small Chrome extension that sends the current page’s cleaned HTML and your instructions to OpenAI or Groq. The model writes JavaScript, which runs immediately on that page. You review the populated fields and submit manually.
+Describe what you want to enter. Let AI fill the page.
 
-**Experimental local candidate.** Live Groq testing now passes all five synthetic scenarios on the latest version, with generation taking 1.5–3.8 seconds in that run. Earlier trials exposed report-format and punctuation issues, documented with the fixes and retests in [testing](docs/testing.md). OpenAI live testing remains blocked by exhausted API credit. Publication awaits the manual Chrome site-permission check.
+![Chrome 138+](https://img.shields.io/badge/Chrome-138%2B-4285F4?logo=googlechrome&logoColor=white)
+![Groq + OpenAI](https://img.shields.io/badge/AI-Groq%20%2B%20OpenAI-99E8CD)
+[![Checks](https://github.com/DavideWasTaken/AI-Form-Autocompiler/actions/workflows/checks.yml/badge.svg)](https://github.com/DavideWasTaken/AI-Form-Autocompiler/actions/workflows/checks.yml)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-![Extension popup with prompt, provider, model and session key controls](docs/images/popup.png)
+[Get started](#get-started) · [How it works](#how-it-works) · [Test results](#does-it-work) · [Privacy](docs/privacy.md)
 
-## Start in five minutes
+<img src="docs/images/popup.png" alt="Extension popup: describe the fields, choose Groq or OpenAI, then fill the page" width="420">
 
-1. Use **Chrome 138 or newer**. Download or copy this project to a local folder.
-2. Open `chrome://extensions` and enable **Developer mode**.
-3. Choose **Load unpacked**, then select this project’s **`src` folder**.
-4. Open the extension’s **Details** and enable **Allow User Scripts**. Reopen the popup afterward. Chrome documents this separate switch in its [userScripts setup guide](https://developer.chrome.com/docs/extensions/reference/api/userScripts#enable_usage_of_the_userscripts_api).
-5. Open a regular web page with a form. In the extension, choose a provider, enter your API key, and click **Save**.
+</div>
 
-There is no build step or Node.js requirement for loading the extension. An API account with access to the selected model is required; usage may incur provider charges.
+An experimental Chrome extension that turns a natural-language prompt into filled web forms. It reads the current page's cleaned HTML, asks **Groq or OpenAI** to generate JavaScript, runs it on the page, and checks the reported fields against their actual values.
 
-| Provider                 | Default model         | API documentation                                                                     |
-| ------------------------ | --------------------- | ------------------------------------------------------------------------------------- |
-| Groq, initially selected | `openai/gpt-oss-120b` | [Groq OpenAI compatibility](https://console.groq.com/docs/openai)                     |
-| OpenAI                   | `gpt-4.1-mini`        | [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat) |
+Bring your own API key. No project backend, account registration, or build step.
 
-The model field is editable. API keys are kept in Chrome session storage, with access restricted to trusted extension contexts. Use **Forget** to remove the selected provider’s key. Provider and model preferences are saved locally.
+## A prompt instead of a field-by-field routine
 
-## Fill a page
+> My name is Alex Rossi. My email is alex@example.test. I live in Milan and I'm looking for a three-room apartment up to €350,000. Prefer email contact. Keep the existing reference unchanged.
 
-Write the facts you want entered, including which existing answers should change. For example:
+Click **Fill this page**, inspect the result, then submit the form yourself.
 
-> My full name is Alex Rossi. My email is alex@example.test. I live in Milan and I’m looking for a three-room apartment up to €350,000. Prefer email contact. Keep the existing reference unchanged.
+| Feature               | What it does                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Context from the page | Uses labels, nearby text and current values to map your instructions to fields.                          |
+| More than text inputs | Handles native selects, dates, checkboxes and radios; also attempts custom widgets and editable content. |
+| Groq or OpenAI        | Choose a provider and model in the popup. Groq is selected by default.                                   |
+| React-aware updates   | Provides native setters and input/change events to help controlled inputs update application state.      |
+| Result verification   | Compares reported changes with the live fields and surfaces failed or skipped entries.                   |
+| Existing answers      | Instructs the model to preserve filled fields unless you ask to replace them.                            |
 
-Click **Fill this page** and allow site access when Chrome asks. Keep the page open while generation runs. The result shows how many reported values were verified, how many changed, and which entries failed or were skipped. Review the whole form before submitting it yourself.
+Designed for general web forms. Compatibility depends on the page; embedded iframe forms and closed shadow roots are currently unsupported.
 
-![Synthetic form populated during a live Groq test](docs/images/form.png)
+## Get started
 
-**There is no mandatory preview.** Clicking Fill authorizes generated JavaScript to run after the provider responds. **Cancel generation** can stop the request before execution starts; it cannot stop a script already running. An error can leave some fields changed, and there is no automatic rollback.
+1. **Download** this repository with **Code → Download ZIP** and extract it, or clone it.
+2. In **Chrome 138+**, open `chrome://extensions` and enable **Developer mode**.
+3. Click **Load unpacked** and select the extracted project's **`src` folder**.
+4. Open the extension's **Details** and enable **Allow User Scripts**, then reopen the popup. This is a [Chrome requirement](https://developer.chrome.com/docs/extensions/reference/api/userScripts#enable_usage_of_the_userscripts_api) for running generated scripts.
+5. Open a page with a form. Click the extension, choose **Groq** or **OpenAI**, enter your API key and click **Save**.
+6. Describe what to fill, click **Fill this page**, and allow access to that site when Chrome asks.
 
-## What happens when you click Fill
+**That's it.** Loading the extension does not require Node.js or a terminal. API usage depends on your provider's access, rate limits and billing. Keys are kept in browser session storage, so you will need to enter them again after a browser restart.
 
-1. Capture the top-level page’s cleaned HTML, current field values, labels, title and URL without query or fragment.
-2. Send that snapshot and your prompt directly to the chosen provider.
-3. Execute the generated JavaScript in Chrome’s `USER_SCRIPT` world on the captured document.
-4. Independently read the reported fields and compare their values and native validity with the script’s report.
+| Provider   | Default model         | Get an API key                                          |
+| ---------- | --------------------- | ------------------------------------------------------- |
+| **Groq**   | `openai/gpt-oss-120b` | [Groq Console](https://console.groq.com/keys)           |
+| **OpenAI** | `gpt-4.1-mini`        | [OpenAI Platform](https://platform.openai.com/api-keys) |
 
-The model is instructed to preserve existing answers, avoid invented information, ignore instructions embedded in the page, and never submit or navigate. These are generation rules. Arbitrary generated code can still perform unintended actions through the page DOM; the execution environment does not guarantee compliance. User-script extension messaging is disabled, and the script receives no extension API key.
+The model field is editable. Model access and availability depend on your provider account.
 
-## Scope and limits
+## Does it work?
 
-- Native inputs, textareas, selects, checkboxes and radios have a DOM helper that dispatches events. Clearing an already selected radio is unsupported; select another option in its group. The model can also use DOM interactions for custom widgets.
-- Open shadow roots are captured; closed shadow roots and embedded iframe forms are unsupported.
-- Complex widgets and dynamic pages are best effort. The script can make mistakes even when reported values match the DOM.
-- Changed field values or navigation during generation stop execution when detected. This does not detect every possible page change.
-- Password, hidden and file inputs, plus fields identified by credit-card or one-time-code autocomplete tokens, are excluded from capture. This is not comprehensive sensitive-data detection.
-- Capture is limited to 100,000 HTML characters, the combined messages to 120,000 characters, your prompt to 6,000 characters, and generated code to 30,000 characters. Oversized pages fail instead of being silently truncated.
-- Provider requests time out after 25 seconds and are not retried automatically. Execution that has not returned after 15 seconds is reported as uncertain and blocks another fill until the page is refreshed. This does not forcibly stop arbitrary JavaScript; a synchronous infinite loop can freeze the page.
+**Yes, on the tested forms.** The latest live Groq run passed **all five scenarios**, with generation taking **1.5–3.8 seconds** (median **2.5 seconds**). These are synthetic test pages using real API calls; timings exclude page capture and script execution.
 
-This is a personal experimental tool. Start with synthetic or low-stakes forms, inspect the results, and decide which page content you are comfortable sending to a provider. Read the [privacy and execution notes](docs/privacy.md) before using private pages.
+| Latest live scenario                                     | Result |
+| -------------------------------------------------------- | ------ |
+| Native controls, including preserving an existing answer | Passed |
+| React controlled inputs and rendered state               | Passed |
+| Duplicate labels, editable text and multiple selection   | Passed |
+| Custom ARIA controls and an open shadow root             | Passed |
+| Page text attempting to override the user's instructions | Passed |
 
-## Try the local form lab
+<img src="docs/images/form.png" alt="Synthetic viewing appointment form filled during the live Groq test" width="820">
 
-Development and tests use Node.js 22 or newer:
+_An actual result from the live Groq custom-widget test. All displayed data is synthetic._
+
+There are also **56 unit/package tests** and **19 Chromium integration checks**. Earlier live trials exposed report-format and address-punctuation problems; the refinements and complete outcomes are documented in the [test report](docs/testing.md). The final five-case run is one trial per scenario, not a guarantee for every website.
+
+**Still unverified:** the full native Chrome toolbar/site-permission approval flow and broad compatibility with third-party websites. OpenAI integration passes mocked tests; live OpenAI generation could not be benchmarked because the test account had exhausted its credit.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Your prompt + cleaned page HTML] --> B[Groq or OpenAI]
+    B --> C[Generated JavaScript]
+    C --> D[Run on the current page]
+    D --> E[Verify reported field values]
+    E --> F[You review and submit]
+```
+
+The snapshot includes visible page context, field labels and current values. Capture removes scripts, styles and selected sensitive inputs. The model can use DOM interactions and a small field helper to fill controls. A separate check verifies its report against the live page.
+
+**Generated JavaScript runs immediately after your Fill click.** There is no mandatory preview. The model is instructed not to submit or navigate, but these instructions are not a runtime guarantee. Review the whole form before submitting it yourself.
+
+## Data and practical limits
+
+- **Direct provider calls:** your prompt and cleaned page snapshot go to the provider you choose. There is no project-operated intermediary or analytics service.
+- **Session-only keys:** API keys stay in Chrome session storage, restricted to trusted extension contexts. They are not included in the model prompt or passed to the generated script.
+- **Page content can be private:** filtering excludes password, hidden and file inputs, plus fields identified by payment or one-time-code autocomplete tokens. Ordinary text and other field values can still contain sensitive information.
+- **Best-effort compatibility:** complex widgets and dynamic pages may require corrections. Only the top-level page and open shadow roots are captured.
+- **Bounded requests:** oversized pages fail visibly; provider requests time out after 25 seconds without automatic retries.
+- **No rollback:** Cancel stops generation before execution starts. It cannot undo edits or stop a running script. An execution timeout blocks another fill until reload, but cannot forcibly terminate arbitrary JavaScript.
+
+See [privacy and execution notes](docs/privacy.md) for the exact data flow, storage and verification boundaries. This is an experimental tool: use it on pages whose data and possible edits you understand.
+
+## Run the form lab
+
+For development and tests, use **Node.js 22+**:
 
 ```sh
 npm ci
@@ -68,27 +112,33 @@ npx playwright install chromium
 npm run demo
 ```
 
-Open the printed address, normally `http://127.0.0.1:8841`. The lab includes native fields, React controls, duplicate labels, custom ARIA widgets, open shadow DOM, and an instruction-injection fixture. It uses synthetic data and prevents fixture form submissions.
+Open `http://127.0.0.1:8841` and try the extension on the included synthetic forms. The fixtures prevent submissions.
 
 ```sh
 npm test
 npm run test:browser
+
+# With GROQ_API_KEY set in your local environment:
+npm run test:live -- --provider=groq
+
+# With OPENAI_API_KEY set in your local environment:
+npm run test:live
 ```
 
-Live tests support `npm run test:live` with `OPENAI_API_KEY`, or `npm run test:live -- --provider=groq` with `GROQ_API_KEY`. Set keys in your local environment. It makes real, potentially billable API requests. Full instructions and the current evidence are in [docs/testing.md](docs/testing.md).
+Live tests call the selected provider and may incur charges. See [testing instructions](docs/testing.md) for pacing, targeted scenarios and artifacts.
 
 ## Troubleshooting
 
-| Message or symptom            | Next step                                                                                                                   |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Enable Allow User Scripts     | Enable the switch in extension Details, then reopen the popup. Reload the extension if Chrome still reports it unavailable. |
-| Site access required          | Grant access to the page’s site when you click Fill.                                                                        |
-| Authentication failed         | Save a valid key for the selected provider.                                                                                 |
-| Rate limit or quota reached   | Check API billing, remaining credit and rate limits with that provider.                                                     |
-| Page changed while generating | Check existing values, then start again on the current page.                                                                |
-| No fields verified            | Read skipped/failed entries and inspect the page before retrying. An iframe or custom control may be unsupported.           |
-| Page too large                | Open a smaller page or dedicated form section.                                                                              |
+| Message or symptom            | What to do                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| Enable Allow User Scripts     | Turn it on in extension Details, then reopen the popup. Reload the extension if needed.       |
+| Site access required          | Allow access when you click Fill on the page.                                                 |
+| Authentication failed         | Save a valid API key for the selected provider.                                               |
+| Rate limit or quota reached   | Check the provider's limits, credit and billing.                                              |
+| Page changed while generating | Review the current page, then start a new fill.                                               |
+| No fields verified            | Inspect the skipped/failed entries; embedded frames and some custom controls are unsupported. |
+| Page too large                | Try a smaller page or a dedicated form.                                                       |
 
 ## License
 
-[MIT](LICENSE) · DavideWasTaken
+[MIT](LICENSE) · Built by [DavideWasTaken](https://github.com/DavideWasTaken)

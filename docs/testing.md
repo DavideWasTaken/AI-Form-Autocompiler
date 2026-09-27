@@ -1,13 +1,13 @@
 # Testing and current evidence
 
-**27 September 2026 — local candidate, not published.** The latest live Groq run passes all five synthetic scenarios. The native Chrome site-permission approval flow still needs a manual check before release.
+**27 September 2026 — experimental release evidence.** The latest live Groq run passes all five synthetic scenarios. The full native Chrome toolbar/site-permission approval flow remains unverified.
 
 ## Results, including earlier failures
 
 | Check                                        | Result                                                                                                                                                                                                                                                       |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Unit and package tests                       | 56/56 pass. Includes report serialization regressions.                                                                                                                                                                                                       |
-| Chromium integration, mocked providers       | **19/19 pass.** Covers execution, both providers, React state, ARIA/shadow controls, failures, cancellation, concurrency, navigation, popup recovery and execution deadlines.                                                                                       |
+| Chromium integration, mocked providers       | **19/19 pass.** Covers execution, both providers, React state, ARIA/shadow controls, failures, cancellation, concurrency, navigation, popup recovery and execution deadlines.                                                                                |
 | Initial unpaced Groq run                     | Three generation trials passed; the next request hit HTTP 429. Remaining trials were skipped.                                                                                                                                                                |
 | Paced Groq baseline, two trials per scenario | 9/10 passed. One custom-widget trial returned a result Chrome could not serialize for verification.                                                                                                                                                          |
 | Diagnostic custom-widget repeats             | 2/2 passed before hardening. The original failed script was not retained, so its exact output shape is unknown.                                                                                                                                              |
@@ -33,7 +33,7 @@ npm run test:browser
 
 Unit tests use Node's test runner and JSDOM; provider responses are mocked. The browser suite loads an unpacked extension in actual Chromium and intercepts both provider endpoints. It exercises `chrome.userScripts.execute` under strict page CSP and asserts actual field values and rendered React state.
 
-The disposable extension copy pregrants localhost access, and its popup is opened as an extension tab. This harness does not verify the native optional-site permission dialog or a human toolbar click. A separate smoke check with the unmodified manifest confirmed that the real action popup opens and renders through CDP; programmatic opening did not grant human-click `activeTab` access. Manually check the site grant and first fill in regular Chrome before publication.
+The disposable extension copy pregrants localhost access, and its popup is opened as an extension tab. This harness does not verify the native optional-site permission dialog or a human toolbar click. A separate smoke check with the unmodified manifest confirmed that the real action popup opens and renders through CDP; programmatic opening did not grant human-click `activeTab` access. The site grant and first fill through the normal Chrome toolbar remain a manual follow-up.
 
 ## Run live tests
 
@@ -68,4 +68,4 @@ Results go to ignored `output/browser-results.json` and `output/live-<provider>-
 
 `npm run demo` starts the fixture server at `http://127.0.0.1:8841`. Load the unmodified `src` folder into Chrome, enable Allow User Scripts, save a session key, grant site access on Fill, and check the results. Stop the server when finished.
 
-Before publication, complete that manual permission/toolbar check. Additional representative real websites will provide evidence beyond these fixtures. Closed shadow roots, embedded frames and complex widgets remain limitations.
+The manual permission/toolbar check remains outstanding and is disclosed in the README. Additional representative real websites will provide evidence beyond these fixtures. Closed shadow roots, embedded frames and complex widgets remain limitations.

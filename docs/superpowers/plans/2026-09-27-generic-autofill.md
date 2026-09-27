@@ -37,3 +37,7 @@
 - OpenAI live generation: blocked by HTTP 429 credit_balance_exhausted / insufficient_quota. User subsequently authorized Groq testing. Latest five-scenario Groq run passed 5/5 after report hardening and punctuation guidance; see docs/live-results.json for all earlier outcomes.
 - Actual unmodified-manifest toolbar popup rendering smoke passed via CDP. Native optional-site permission approval remains a manual release gate.
 - Screenshots inspected; secret scan passed across all 30 tracked files, including an exact-match check for the authorized Groq key. No push or publication.
+
+## Publication follow-up — 27 September 2026
+
+The user subsequently requested a polished README and push. Documentation now describes an experimental release and explicitly retains the unverified native toolbar/site-permission flow. Fresh local verification passed 56 unit/package tests and 19 Chromium integration checks. The five-case live Groq evidence remains unchanged. The current 30 tracked files passed a credential scan, including an exact-match check against the locally authorized Groq key. The original repository's full three-commit history was also scanned; no secret matches were found. Publication preserves that history and uses DavideWasTaken's GitHub noreply identity for new commits.
