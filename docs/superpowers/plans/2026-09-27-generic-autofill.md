@@ -27,13 +27,13 @@
 - [x] Tests before implementations for capture/verifier behaviors, scripts runtime errors and stale documents.
 - [x] Build fixture pages covering native HTML, React controlled inputs, dynamic/ARIA widgets, duplicate labels, existing data, invalid values, unsupported/hidden inputs, prompt-injection text, large pages.
 - [x] Launch actual Chromium extension; verify toggle, provider key settings, successful and failed provider calls, userScripts execution (including strict page CSP), no submission, errors and result display.
-- [ ] Run live OpenAI and Groq (when local key is available) on synthetic fixtures, measure latency and exact expected field values across repeated trials; record passes/failures, never fabricate provider coverage. No external form submissions.
+- [x] Run live OpenAI and Groq (when local key is available) on synthetic fixtures, measure latency and exact expected field values across repeated trials; record passes/failures, never fabricate provider coverage. No external form submissions.
 - [x] Independent spec/code review; fix blockers and rerun relevant gates.
 - [x] README setup with screenshots, model/key/provider choice, data flow, experimental limitations, usage risk; docs/testing.md separates deterministic tests from live AI results. Add MIT license and ignores for secrets/artifacts.
 - [x] Commit locally with DavideWasTaken / 85361102+DavideWasTaken@users.noreply.github.com only after verification. Do not push or publish this turn.
 
 ## Verification checkpoint
-- 54 unit/package tests and 18 actual Chromium checks with mocked providers pass.
-- OpenAI live generation: blocked by HTTP 429 credit_balance_exhausted / insufficient_quota. User selected OpenAI-only live testing; Groq live trial is deferred.
+- 56 unit/package tests and 19 Chromium integration checks pass, including the report-format regression.
+- OpenAI live generation: blocked by HTTP 429 credit_balance_exhausted / insufficient_quota. User subsequently authorized Groq testing. Latest five-scenario Groq run passed 5/5 after report hardening and punctuation guidance; see docs/live-results.json for all earlier outcomes.
 - Actual unmodified-manifest toolbar popup rendering smoke passed via CDP. Native optional-site permission approval remains a manual release gate.
-- Screenshots inspected; secret scan required before local commit. No push or publication.
+- Screenshots inspected; secret scan passed across all 30 tracked files, including an exact-match check for the authorized Groq key. No push or publication.

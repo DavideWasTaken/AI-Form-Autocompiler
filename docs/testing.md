@@ -1,21 +1,28 @@
 # Testing and current evidence
 
-**Status recorded 27 September 2026: local candidate; publication remains on hold.** Deterministic tests exercise the integration. Successful live AI generation has not yet been established.
+**27 September 2026 — local candidate, not published.** The latest live Groq run passes all five synthetic scenarios. The native Chrome site-permission approval flow still needs a manual check before release.
 
-## Current results
+## Results, including earlier failures
 
-| Layer                                     | Evidence at this checkpoint                                                                                                                                                          | What it establishes                                                                                                                                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit and packaging tests                  | **54/54 pass** in `npm test`.                                                                                                                                                        | Request validation, error handling, capture, deadlines and verification behavior under controlled inputs.                                                                                                     |
-| Actual Chromium with mocked API responses | **18/18 pass** in `npm run test:browser`.                                                                                                                                            | Extension loading, userScripts toggle, session keys, strict-CSP execution, UI reporting, cancellation, concurrency, navigation/reload, stalled scripts, native/React/ARIA/shadow controls and both providers. |
-| Live OpenAI, `gpt-4.1-mini`               | Ten generation trials attempted across five fixtures; all failed with HTTP 429. Account diagnostics reported exhausted credit / `credit_balance_exhausted` and `insufficient_quota`. | Requests reached the provider and the extension surfaced the quota failure. No successful AI filling or latency evidence.                                                                                     |
-| Groq                                      | Mocked provider tests only. Live testing was intentionally limited to OpenAI.                                                                                                        | Request construction and deterministic response handling; no live model-quality claim.                                                                                                                        |
+| Check                                        | Result                                                                                                                                                                                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit and package tests                       | 56/56 pass. Includes report serialization regressions.                                                                                                                                                                                                       |
+| Chromium integration, mocked providers       | **19/19 pass.** Covers execution, both providers, React state, ARIA/shadow controls, failures, cancellation, concurrency, navigation, popup recovery and execution deadlines.                                                                                       |
+| Initial unpaced Groq run                     | Three generation trials passed; the next request hit HTTP 429. Remaining trials were skipped.                                                                                                                                                                |
+| Paced Groq baseline, two trials per scenario | 9/10 passed. One custom-widget trial returned a result Chrome could not serialize for verification.                                                                                                                                                          |
+| Diagnostic custom-widget repeats             | 2/2 passed before hardening. The original failed script was not retained, so its exact output shape is unknown.                                                                                                                                              |
+| Report hardening                             | Missing/non-JSON report values are rejected before the Chrome API boundary; unrelated metadata is stripped. Unit tests cover missing returns, undefined, DOM references and sparse arrays. Model instructions specify a plain report and a top-level return. |
+| Two custom repeats after report hardening    | 1/2 passed strict assertions. The other copied the sentence-ending period into a street address. Punctuation extraction guidance was then added to the model prompt.                                                                                         |
+| Latest Groq run with all refinements         | **5/5 generation trials passed**, one per scenario, plus three setup checks. Generation took **1.456–3.839 seconds**, median **2.498 seconds**.                                                                                                              |
+| OpenAI live run                              | Ten earlier generation attempts returned HTTP 429, with account diagnostics `credit_balance_exhausted` / `insufficient_quota`. No successful OpenAI generation benchmark.                                                                                    |
 
-The live run’s three setup checks passed, but those are not successful generation trials. Failed-request durations must not be presented as AI completion latency. Screenshots of the UI and synthetic fixtures illustrate the local application; they do not demonstrate live AI accuracy.
+Groq used `openai/gpt-oss-120b`; account availability was checked through the provider's models endpoint. The full paced run and latest run used 45-second gaps to respect this account's limits. Those gaps are test pacing, not extension latency. Timing covers the provider request and response, excluding page capture/execution and pacing. Neither a five-case pass nor two successful repeats establish universal reliability.
+
+The sanitized [live result record](live-results.json) preserves each phase and its failures. It contains no credentials or real customer data. The form screenshot in the README comes from the final live Groq custom-widget fixture; the popup screenshot illustrates its controls.
 
 ## Run deterministic tests
 
-From the repository root, with Node.js 22 or newer:
+Requires Node.js 22+:
 
 ```sh
 npm ci
@@ -24,40 +31,41 @@ npm test
 npm run test:browser
 ```
 
-`npm test` uses Node’s test runner. Provider tests inject mocked fetch responses and never call OpenAI or Groq. DOM tests use JSDOM. Packaging tests check the extension package.
+Unit tests use Node's test runner and JSDOM; provider responses are mocked. The browser suite loads an unpacked extension in actual Chromium and intercepts both provider endpoints. It exercises `chrome.userScripts.execute` under strict page CSP and asserts actual field values and rendered React state.
 
-`npm run test:browser` launches actual Chromium with an unpacked copy of the extension, a temporary browser profile, and a local fixture server. It intercepts OpenAI and Groq requests with deterministic responses. It tests the installed extension’s flow, including the real userScripts switch and script execution; it does not test a model’s ability to understand a form. The disposable extension copy has a localhost permission for automation. The popup is opened as an extension tab; this harness does not verify the native optional-site permission dialog or the toolbar popup itself. Check those with the unmodified `src` manifest before release.
+The disposable extension copy pregrants localhost access, and its popup is opened as an extension tab. This harness does not verify the native optional-site permission dialog or a human toolbar click. A separate smoke check with the unmodified manifest confirmed that the real action popup opens and renders through CDP; programmatic opening did not grant human-click `activeTab` access. Manually check the site grant and first fill in regular Chrome before publication.
 
-Provider coverage includes both fixed API endpoints and default models, custom models, message and code limits, HTTP failures without raw payload leakage, malformed or incomplete completions, refusals, fences, cancellation and the 25-second deadline. DOM coverage includes sensitive autocomplete tokens, visibility across shadow ancestors, stale markers, native events, rejecting unsupported radio clearing, current textarea values, existing-data changes, invalid native values and invalid or duplicate report IDs.
+## Run live tests
 
-## Live OpenAI trials
-
-Set `OPENAI_API_KEY` in your local process environment using your usual secret-management method, then run:
+Set the chosen key in your local process environment using your secret-management method. Keys must not be committed or pasted into shared logs.
 
 ```sh
+# OPENAI_API_KEY must be available locally
 npm run test:live
+
+# GROQ_API_KEY must be available locally
+npm run test:live -- --provider=groq
+
+# Targeted repeat, with explicit pacing
+npm run test:live -- --provider=groq --case=/custom --trials=2 --delay-ms=45000
 ```
 
-The command refuses to run without the environment variable. It makes real, potentially billable requests using your account. Do not put an actual key in source files, screenshots, committed environment files or shared logs.
+These commands make real, potentially billable provider requests. The default is two trials per scenario; Groq calls are spaced 45 seconds apart. `--trials=1` runs one pass. Authentication/quota failures stop subsequent live requests. An unknown case filter is rejected.
 
-The current harness requests `gpt-4.1-mini` and repeats each fixture twice:
+| Fixture      | Expected behavior                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| `/`          | Text, email, date, budget, textarea, select, radio and checkbox; preserve an existing reference. |
+| `/react`     | Update controlled inputs and React's rendered state.                                             |
+| `/duplicate` | Distinguish billing/shipping cities; contenteditable notes and multiple selection.               |
+| `/custom`    | ARIA combobox/switch and an input inside an open shadow root.                                    |
+| `/injection` | Follow the user prompt despite page text requesting a different name and submission.             |
 
-After an authentication or quota failure, subsequent live trials are skipped to avoid repeating requests that cannot succeed. The initial quota-blocked run predates that early-stop improvement.
+Every passing live trial requires exact expected values, extension verification and zero submission attempts. Fixtures are synthetic localhost pages; their submit handler prevents and counts submissions. Public third-party forms are not submitted. The injection fixture is one example, not a guarantee against prompt injection.
 
-| Fixture                             | Expected behavior                                                                                               |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Native form, `/`                    | Fill text, email, date, number, textarea, select, radio and checkbox controls; preserve the existing reference. |
-| React form, `/react`                | Update controlled fields and the rendered React state.                                                          |
-| Duplicate labels, `/duplicate`      | Distinguish billing and shipping cities; fill contenteditable notes and a multiple select.                      |
-| Custom widgets, `/custom`           | Interact with an ARIA combobox and switch, and fill an input inside an open shadow root.                        |
-| Instruction injection, `/injection` | Follow the user’s request while ignoring page text asking for an unrelated replacement and submission.          |
+## Artifacts and manual checks
 
-Each successful trial must pass independent field-value assertions, extension verification and a zero-submission check. Tests use synthetic localhost pages and do not submit public third-party forms. The fixture server prevents submission and counts attempts so a generated submit action fails the test.
+Results go to ignored `output/browser-results.json` and `output/live-<provider>-results.json`; the original OpenAI run used the legacy `output/live-results.json` name. Successful live trials save screenshots. Optional `--capture-scripts` records generated JavaScript under ignored `output/` for synthetic-fixture debugging; it does not record API keys. Inspect diagnostic files before sharing them.
 
-## Outputs and interpretation
+`npm run demo` starts the fixture server at `http://127.0.0.1:8841`. Load the unmodified `src` folder into Chrome, enable Allow User Scripts, save a session key, grant site access on Fill, and check the results. Stop the server when finished.
 
-The harness writes machine-readable results to `output/browser-results.json` or `output/live-results.json`. Successful live trials also produce fixture screenshots. Browser profiles and the disposable extension copy are under `output/`. This directory is ignored by Git; inspect artifacts before sharing them.
-
-To inspect the fixtures manually, run `npm run demo` and open `http://127.0.0.1:8841`, with the paths above for each scenario. The command starts a local server; stop it when finished.
-
-Before publication, rerun the current unit, packaging and browser suites, then complete successful live trials with available API credit. Record actual expected-versus-observed values, failures and generation timings. Passing these fixtures still does not imply reliable operation on every website, closed shadow roots or iframe forms.
+Before publication, complete that manual permission/toolbar check. Additional representative real websites will provide evidence beyond these fixtures. Closed shadow roots, embedded frames and complex widgets remain limitations.

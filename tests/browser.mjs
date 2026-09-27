@@ -3,10 +3,45 @@ import { resolve } from "node:path";
 import { mkdir, cp, readFile, writeFile, mkdtemp } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { startServer } from "./server.mjs";
+import { PROVIDERS } from "../src/provider.js";
 
 const live = process.argv.includes("--live");
-if (live && !process.env.OPENAI_API_KEY)
-  throw new Error("Set OPENAI_API_KEY locally for live tests.");
+const liveProvider =
+  process.argv
+    .find((arg) => arg.startsWith("--provider="))
+    ?.slice("--provider=".length) || "openai";
+if (!Object.hasOwn(PROVIDERS, liveProvider))
+  throw new Error("Choose --provider=openai or --provider=groq.");
+const keyName = `${liveProvider.toUpperCase()}_API_KEY`;
+if (live && !process.env[keyName])
+  throw new Error(`Set ${keyName} locally for live tests.`);
+const selectedProvider = live ? liveProvider : "openai";
+const liveDelayMs = Number(
+  process.argv
+    .find((arg) => arg.startsWith("--delay-ms="))
+    ?.slice("--delay-ms=".length) || (liveProvider === "groq" ? 45000 : 0),
+);
+const caseFilter = process.argv
+  .find((arg) => arg.startsWith("--case="))
+  ?.slice("--case=".length);
+if (
+  caseFilter &&
+  !["/", "/react", "/duplicate", "/custom", "/injection"].includes(caseFilter)
+)
+  throw new Error("No fixture matches --case.");
+const trials = Number(
+  process.argv
+    .find((arg) => arg.startsWith("--trials="))
+    ?.slice("--trials=".length) || 2,
+);
+if (
+  !Number.isFinite(liveDelayMs) ||
+  liveDelayMs < 0 ||
+  !Number.isInteger(trials) ||
+  trials < 1 ||
+  trials > 5
+)
+  throw new Error("Invalid live test pacing or trial count.");
 await mkdir("output", { recursive: true });
 const ext = resolve("output/extension");
 await cp("src", ext, { recursive: true });
@@ -20,11 +55,32 @@ const context = await chromium.launchPersistentContext(profile, {
   headless: true,
   args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
 });
+if (live && process.argv.includes("--capture-scripts")) {
+  let scriptNumber = 0;
+  await context.route(PROVIDERS[liveProvider].endpoint, async (route) => {
+    const response = await route.fetch();
+    if (response.ok()) {
+      const payload = await response.json();
+      const code = payload.choices?.[0]?.message?.content;
+      if (typeof code === "string")
+        await writeFile(
+          `output/live-${liveProvider}-script-${++scriptNumber}.js`,
+          code,
+        );
+    }
+    await route.fulfill({ response });
+  });
+}
 const results = [];
 let providerBlocked = false;
 async function check(name, fn) {
   if (live && providerBlocked) {
-    results.push({name,pass:null,skipped:true,reason:'Provider unavailable after authentication or quota failure'});
+    results.push({
+      name,
+      pass: null,
+      skipped: true,
+      reason: "Provider unavailable after authentication or quota failure",
+    });
     console.log(`SKIP ${name}: provider unavailable`);
     return;
   }
@@ -36,7 +92,13 @@ async function check(name, fn) {
       `PASS ${name}${details?.aiMs ? ` (${details.aiMs}ms AI)` : ""}`,
     );
   } catch (error) {
-    if(live && /Authentication failed|quota was reached|denied access/.test(error.message)) providerBlocked=true;
+    if (
+      live &&
+      /Authentication failed|quota was reached|denied access/.test(
+        error.message,
+      )
+    )
+      providerBlocked = true;
     results.push({
       name,
       pass: false,
@@ -78,21 +140,24 @@ try {
   });
   await form.bringToFront();
   await ui.reload();
-  await ui.locator("#provider").selectOption("openai");
+  await ui.locator("#provider").selectOption(selectedProvider);
   await ui
     .locator("#api-key")
-    .fill(live ? process.env.OPENAI_API_KEY : "synthetic-test-key");
+    .fill(live ? process.env[keyName] : "synthetic-test-key");
   await ui.locator("#save-key").click();
   await check(
     "key saved in session and absent from local storage",
     async () => {
       await ui.locator("#key-status").filter({ hasText: "saved" }).waitFor();
-      const state = await worker.evaluate(async () => ({
-        hasSession: Boolean(
-          (await chrome.storage.session.get("apiKeys")).apiKeys?.openai,
-        ),
-        localKeys: Object.keys(await chrome.storage.local.get(null)),
-      }));
+      const state = await worker.evaluate(
+        async (provider) => ({
+          hasSession: Boolean(
+            (await chrome.storage.session.get("apiKeys")).apiKeys?.[provider],
+          ),
+          localKeys: Object.keys(await chrome.storage.local.get(null)),
+        }),
+        selectedProvider,
+      );
       assert.equal(state.hasSession, true);
       assert.ok(!state.localKeys.includes("apiKeys"));
     },
@@ -181,6 +246,24 @@ try {
       assert.equal(r.result.verified, 0);
       assert.equal(r.result.failed.length, 1);
     });
+    await check(
+      "missing model report is a clear failure before Chrome serialization",
+      async () => {
+        scriptedCode = "return undefined;";
+        try {
+          const r = await send({
+            action: "fill",
+            provider: "openai",
+            prompt: "Synthetic report regression",
+          });
+          assert.equal(r.ok, false);
+          assert.match(r.error, /completion report/);
+          assert.doesNotMatch(r.error, /unserializable/);
+        } finally {
+          scriptedCode = undefined;
+        }
+      },
+    );
     await check(
       "duplicate concurrent fills are rejected and cancellation prevents execution",
       async () => {
@@ -433,86 +516,103 @@ try {
         },
       },
     ];
-    for (let repeat = 0; repeat < 2; repeat++)
+    let liveAttempts = 0;
+    for (let repeat = 0; repeat < trials; repeat++)
       for (const c of cases)
-        await check(`${c.name} · trial ${repeat + 1}`, async () => {
-          await form.goto(lab.url + c.path);
-          await form.locator("input").first().waitFor();
-          const r = await send({
-            action: "fill",
-            provider: "openai",
-            model: "gpt-4.1-mini",
-            prompt: c.prompt,
+        if (!caseFilter || c.path === caseFilter)
+          await check(`${c.name} · trial ${repeat + 1}`, async () => {
+            if (liveAttempts++ > 0 && liveDelayMs)
+              await new Promise((resolve) => setTimeout(resolve, liveDelayMs));
+            await form.goto(lab.url + c.path);
+            await form.locator("input").first().waitFor();
+            const r = await send({
+              action: "fill",
+              provider: liveProvider,
+              model: PROVIDERS[liveProvider].model,
+              prompt: c.prompt,
+            });
+            assert.equal(r.ok, true, r.error);
+            assert.equal(
+              r.result.failed.length,
+              0,
+              JSON.stringify(r.result.failed),
+            );
+            assert.ok(r.result.verified > 0);
+            for (const [key, value] of Object.entries(c.expected)) {
+              const el = form.locator(`#${key}`);
+              const actual = await el.evaluate((el) =>
+                el.matches('input[type="checkbox"],input[type="radio"]')
+                  ? el.checked
+                  : el.hasAttribute("aria-checked")
+                    ? el.getAttribute("aria-checked") === "true"
+                    : el.matches("select[multiple]")
+                      ? [...el.selectedOptions].map((o) => o.value)
+                      : el.matches("input,textarea,select")
+                        ? el.value
+                        : el.textContent.trim(),
+              );
+              assert.deepEqual(
+                actual,
+                value,
+                `${key}: expected ${JSON.stringify(value)}, actual ${JSON.stringify(actual)}`,
+              );
+            }
+            if (c.path === "/react")
+              assert.deepEqual(
+                JSON.parse(await form.locator("#state").innerText()),
+                { name: "Davide Rossi", city: "Milan", enabled: true },
+              );
+            assert.equal(
+              await form.evaluate(() => window.submitted),
+              0,
+              "The form must not submit",
+            );
+            await form.screenshot({
+              path: `output/${c.path.replaceAll("/", "") || "native"}-${repeat + 1}.png`,
+              fullPage: true,
+            });
+            return {
+              aiMs: r.result.elapsedMs,
+              verified: r.result.verified,
+              changed: r.result.changed,
+              skipped: r.result.skipped,
+            };
           });
-          assert.equal(r.ok, true, r.error);
-          assert.equal(
-            r.result.failed.length,
-            0,
-            JSON.stringify(r.result.failed),
-          );
-          assert.ok(r.result.verified > 0);
-          for (const [key, value] of Object.entries(c.expected)) {
-            const el = form.locator(`#${key}`);
-            const actual = await el.evaluate((el) =>
-              el.matches('input[type="checkbox"],input[type="radio"]')
-                ? el.checked
-                : el.hasAttribute("aria-checked")
-                  ? el.getAttribute("aria-checked") === "true"
-                  : el.matches("select[multiple]")
-                    ? [...el.selectedOptions].map((o) => o.value)
-                    : el.matches("input,textarea,select")
-                      ? el.value
-                      : el.textContent.trim(),
-            );
-            assert.deepEqual(
-              actual,
-              value,
-              `${key}: expected ${JSON.stringify(value)}, actual ${JSON.stringify(actual)}`,
-            );
-          }
-          if (c.path === "/react")
-            assert.deepEqual(
-              JSON.parse(await form.locator("#state").innerText()),
-              { name: "Davide Rossi", city: "Milan", enabled: true },
-            );
-          assert.equal(
-            await form.evaluate(() => window.submitted),
-            0,
-            "The form must not submit",
-          );
-          await form.screenshot({
-            path: `output/${c.path.replaceAll("/", "") || "native"}-${repeat + 1}.png`,
-            fullPage: true,
-          });
-          return {
-            aiMs: r.result.elapsedMs,
-            verified: r.result.verified,
-            changed: r.result.changed,
-            skipped: r.result.skipped,
-          };
-        });
   }
   if (!live) {
-    await check('local validation errors are not replaced by a cached successful result', async () => {
-      await ui.locator('#prompt').fill('');
-      await ui.locator('#fill').click();
-      assert.match(await ui.locator('#status').innerText(), /Describe what to fill/);
-    });
-    await form.reload(); await form.bringToFront(); await ui.reload();
-    await ui.locator('#provider').selectOption('groq');
-    await ui.locator('#prompt').fill('My name is Davide Rossi. I live in Milan. I am looking for an apartment up to €350,000. Prefer email contact.');
+    await check(
+      "local validation errors are not replaced by a cached successful result",
+      async () => {
+        await ui.locator("#prompt").fill("");
+        await ui.locator("#fill").click();
+        assert.match(
+          await ui.locator("#status").innerText(),
+          /Describe what to fill/,
+        );
+      },
+    );
+    await form.reload();
+    await form.bringToFront();
+    await ui.reload();
+    await ui.locator("#provider").selectOption("groq");
+    await ui
+      .locator("#prompt")
+      .fill(
+        "My name is Davide Rossi. I live in Milan. I am looking for an apartment up to €350,000. Prefer email contact.",
+      );
   }
-  await ui.locator('body').screenshot({ path: "output/popup.png" });
+  await ui.locator("body").screenshot({ path: "output/popup.png" });
 } finally {
   await context.close();
   await new Promise((resolve) => lab.server.close(resolve));
   await writeFile(
-    `output/${live ? "live" : "browser"}-results.json`,
+    `output/${live ? `live-${liveProvider}` : "browser"}-results.json`,
     JSON.stringify(
       {
         date: new Date().toISOString(),
         live,
-        provider: live ? "openai" : "mocked",
+        provider: live ? liveProvider : "mocked",
+        model: live ? PROVIDERS[liveProvider].model : null,
         results,
       },
       null,

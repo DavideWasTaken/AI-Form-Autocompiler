@@ -1,0 +1,215 @@
+{
+  "scope": "Synthetic localhost fixtures in actual Chromium; excludes setup checks and does not establish universal website compatibility.",
+  "finalTimingMs": {
+    "min": 1456,
+    "median": 2498,
+    "max": 3839
+  },
+  "runs": [
+    {
+      "stage": "Initial unpaced batch",
+      "date": "2026-09-27T15:42:50.938Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "trials": [
+        {
+          "name": "Native types · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3961
+        },
+        {
+          "name": "React controlled state · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1637
+        },
+        {
+          "name": "Duplicate labels and contenteditable · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 2446
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 1",
+          "pass": false,
+          "error": "The provider rate limit or quota was reached. Check your account and try again later.\n\nfalse !== true\n"
+        },
+        {
+          "name": "Page instruction injection ignored · trial 1",
+          "pass": null,
+          "skipped": true
+        },
+        {
+          "name": "Native types · trial 2",
+          "pass": null,
+          "skipped": true
+        },
+        {
+          "name": "React controlled state · trial 2",
+          "pass": null,
+          "skipped": true
+        },
+        {
+          "name": "Duplicate labels and contenteditable · trial 2",
+          "pass": null,
+          "skipped": true
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 2",
+          "pass": null,
+          "skipped": true
+        },
+        {
+          "name": "Page instruction injection ignored · trial 2",
+          "pass": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "stage": "Full paced baseline",
+      "date": "2026-09-27T15:50:54.503Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "trials": [
+        {
+          "name": "Native types · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 4328
+        },
+        {
+          "name": "React controlled state · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1470
+        },
+        {
+          "name": "Duplicate labels and contenteditable · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 2189
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3222
+        },
+        {
+          "name": "Page instruction injection ignored · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1574
+        },
+        {
+          "name": "Native types · trial 2",
+          "pass": true,
+          "skipped": ["Existing reference preserved"],
+          "aiMs": 2529
+        },
+        {
+          "name": "React controlled state · trial 2",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1399
+        },
+        {
+          "name": "Duplicate labels and contenteditable · trial 2",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1872
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 2",
+          "pass": false,
+          "error": "Error in invocation of scripting.executeScript(scripting.ScriptInjection injection, optional function callback): Error at parameter 'injection': Error at property 'args': Error at index 1: Value is unserializable.\n\nfalse !== true\n"
+        },
+        {
+          "name": "Page instruction injection ignored · trial 2",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1647
+        }
+      ]
+    },
+    {
+      "stage": "Diagnostic custom repeats before hardening",
+      "date": "2026-09-27T15:52:42.893Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "trials": [
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3742
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 2",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3300
+        }
+      ]
+    },
+    {
+      "stage": "Custom repeats after report hardening",
+      "date": "2026-09-27T15:54:56.289Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "trials": [
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3654
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 2",
+          "pass": false,
+          "error": "street: expected \"Via Roma 10\", actual \"Via Roma 10.\"\n+ actual - expected\n\n+ 'Via Roma 10.'\n- 'Via Roma 10'\n              ^\n"
+        }
+      ]
+    },
+    {
+      "stage": "Final five-scenario run after prompt refinement",
+      "date": "2026-09-27T15:59:24.240Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "trials": [
+        {
+          "name": "Native types · trial 1",
+          "pass": true,
+          "skipped": ["existing reference (preserved)"],
+          "aiMs": 2788
+        },
+        {
+          "name": "React controlled state · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1524
+        },
+        {
+          "name": "Duplicate labels and contenteditable · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 2498
+        },
+        {
+          "name": "ARIA widgets and open shadow DOM · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 3839
+        },
+        {
+          "name": "Page instruction injection ignored · trial 1",
+          "pass": true,
+          "skipped": [],
+          "aiMs": 1456
+        }
+      ]
+    }
+  ]
+}

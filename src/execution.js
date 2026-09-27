@@ -94,7 +94,14 @@ export function executeBody(code, snapshot) {
     const before=${before};
     for(const field of before){const el=af.get(field.id);if(!el||JSON.stringify(af.read(el))!==JSON.stringify(field.value))throw new Error('Page fields changed while generating. Analyze again.');}
     const report=await(async()=>{${code}\n})();
-    return {ok:true,report};
+    if(!report || !Array.isArray(report.filled) || !Array.isArray(report.skipped))throw new Error('Script returned no usable completion report. Check the page before retrying.');
+    const clean={filled:report.filled.map(item=>{
+      if(!item || typeof item.id!=='string')throw new Error('Script returned an invalid field report.');
+      const v=Array.isArray(item.value)?Array.from(item.value):item.value;
+      if(!(typeof v==='string'||typeof v==='boolean'||(typeof v==='number'&&Number.isFinite(v))||(Array.isArray(v)&&v.every(x=>typeof x==='string'))))throw new Error('Script returned a non-JSON field value in its completion report.');
+      return {id:item.id,value:Array.isArray(v)?[...v]:v};
+    }),skipped:report.skipped.filter(item=>typeof item==='string')};
+    return {ok:true,report:clean};
   }catch(error){return {ok:false,error:String(error?.message||error).slice(0,300)};}})()`;
 }
 

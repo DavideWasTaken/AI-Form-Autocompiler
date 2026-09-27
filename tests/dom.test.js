@@ -18,6 +18,37 @@ function page(html) {
 function capture(w) {
   return w.eval(`(${capturePage.toString()})('test-run')`);
 }
+test("execution rejects missing or non-JSON field reports before crossing the Chrome API boundary", async () => {
+  const w = page("<input>");
+  const s = capture(w);
+  const id = s.fields[0].id;
+  for (const code of [
+    "void 0;",
+    `return {filled:[{id:'${id}',value:undefined}],skipped:[]};`,
+    `return {filled:[{id:'${id}',value:new Array(1)}],skipped:[]};`,
+    `return {filled:[{id:'${id}',value:af.get('${id}')}],skipped:[]};`,
+  ]) {
+    const result = await w.eval(executeBody(code, s));
+    assert.equal(result.ok, false);
+    assert.match(result.error, /report/i);
+  }
+});
+test("execution strips unrelated report metadata so DOM references cannot break serialization", async () => {
+  const w = page("<input>");
+  const s = capture(w);
+  const id = s.fields[0].id;
+  const r = await w.eval(
+    executeBody(
+      `af.set('${id}','Davide');return {filled:[{id:'${id}',value:'Davide',element:af.get('${id}')}],skipped:[],page:document};`,
+      s,
+    ),
+  );
+  assert.equal(r.ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(r.report)), {
+    filled: [{ id, value: "Davide" }],
+    skipped: [],
+  });
+});
 test("button-based ARIA combobox uses its visible selection rather than HTML button.value", async () => {
   const w = page('<button type="button" role="combobox">Choose city</button>');
   const s = capture(w);

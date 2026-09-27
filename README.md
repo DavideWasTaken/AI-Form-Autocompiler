@@ -4,7 +4,7 @@
 
 A small Chrome extension that sends the current page’s cleaned HTML and your instructions to OpenAI or Groq. The model writes JavaScript, which runs immediately on that page. You review the populated fields and submit manually.
 
-**Experimental local candidate. Publication is on hold until successful live AI testing.** Browser integration has been tested with mocked responses. The current OpenAI trials were blocked by exhausted API credit; they do not establish filling accuracy or generation speed. See [testing](docs/testing.md).
+**Experimental local candidate.** Live Groq testing now passes all five synthetic scenarios on the latest version, with generation taking 1.5–3.8 seconds in that run. Earlier trials exposed report-format and punctuation issues, documented with the fixes and retests in [testing](docs/testing.md). OpenAI live testing remains blocked by exhausted API credit. Publication awaits the manual Chrome site-permission check.
 
 ![Extension popup with prompt, provider, model and session key controls](docs/images/popup.png)
 
@@ -33,7 +33,7 @@ Write the facts you want entered, including which existing answers should change
 
 Click **Fill this page** and allow site access when Chrome asks. Keep the page open while generation runs. The result shows how many reported values were verified, how many changed, and which entries failed or were skipped. Review the whole form before submitting it yourself.
 
-![Synthetic form used for local browser tests](docs/images/form.png)
+![Synthetic form populated during a live Groq test](docs/images/form.png)
 
 **There is no mandatory preview.** Clicking Fill authorizes generated JavaScript to run after the provider responds. **Cancel generation** can stop the request before execution starts; it cannot stop a script already running. An error can leave some fields changed, and there is no automatic rollback.
 
@@ -75,7 +75,7 @@ npm test
 npm run test:browser
 ```
 
-Live OpenAI testing is available through `npm run test:live` after setting `OPENAI_API_KEY` locally. It makes real, potentially billable API requests. Full instructions and the current evidence are in [docs/testing.md](docs/testing.md).
+Live tests support `npm run test:live` with `OPENAI_API_KEY`, or `npm run test:live -- --provider=groq` with `GROQ_API_KEY`. Set keys in your local environment. It makes real, potentially billable API requests. Full instructions and the current evidence are in [docs/testing.md](docs/testing.md).
 
 ## Troubleshooting
 
