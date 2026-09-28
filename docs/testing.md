@@ -10,8 +10,10 @@ Version 2.1.0 · 28 September 2026.
 | Chromium integration, mocked providers | **25/25 pass.** Execution under strict CSP, both providers, React state, ARIA/shadow controls, failures, cancellation, concurrency, navigation, popup recovery, undo, retry-failed and empty-only scope. |
 | Live Groq, public demo pages           | **3/3 pass** with undo verified: Selenium web form (5 fields), Selenium form page (4 fields), Playwright TodoMVC (1 field). AI generation 1.0–2.9 s.                                             |
 | Live Groq, synthetic fixtures          | **5/5 pass**: native controls, React, duplicate labels, ARIA/shadow root, prompt injection. AI generation 1.5–3.8 s, median 2.5 s.                                                                |
+| Live OpenAI, public demo pages         | **3/3 pass** with undo verified, same pages and fields as Groq. AI generation 2.0–6.3 s.                                                                                                          |
+| Live OpenAI, synthetic fixtures        | **5/5 pass**, same scenarios as Groq. AI generation 2.9–7.2 s, median 6.1 s.                                                                                                                      |
 
-All live runs use `openai/gpt-oss-120b` and synthetic data. Public pages are never submitted: the harness blocks form submission and page network requests after load. Timings cover the provider request only; gaps between runs are pacing for rate limits.
+Groq runs use `openai/gpt-oss-120b`, OpenAI runs `gpt-4.1-mini`; all use synthetic data. Public pages are never submitted: the harness blocks form submission and page network requests after load. Timings cover the provider request only; gaps between runs are pacing for rate limits.
 
 Earlier live rounds found two model-output problems, fixed before the runs above: reports Chrome could not serialize (now rejected before the API boundary) and a sentence-ending period copied into a street address (now covered by extraction guidance). The sanitized [live result record](live-results.json) keeps every phase.
 

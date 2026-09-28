@@ -65,20 +65,20 @@ The model field is editable, so you can use any chat model your account has acce
 
 ## Tested on
 
-Live runs with Groq (`openai/gpt-oss-120b`), synthetic data, submissions blocked:
+Live runs with both providers, synthetic data, submissions blocked:
 
-| Page                                                                         | Result                                  |
-| ---------------------------------------------------------------------------- | --------------------------------------- |
-| [Selenium web form](https://www.selenium.dev/selenium/web/web-form.html)     | Passed · 5 fields verified · undo verified |
-| [Selenium form page](https://www.selenium.dev/selenium/web/formPage.html)    | Passed · 4 fields verified · undo verified |
-| [Playwright TodoMVC](https://demo.playwright.dev/todomvc/) (React-style app) | Passed · 1 field verified · undo verified |
-| Native controls, preserving an existing answer                               | Passed                                  |
-| React controlled inputs and rendered state                                   | Passed                                  |
-| Duplicate labels, editable text and multiple selection                       | Passed                                  |
-| Custom ARIA controls and an open shadow root                                 | Passed                                  |
-| Page text trying to override the user's instructions                         | Passed                                  |
+| Page                                                                         | Groq (`openai/gpt-oss-120b`) | OpenAI (`gpt-4.1-mini`) |
+| ---------------------------------------------------------------------------- | ---------------------------- | ----------------------- |
+| [Selenium web form](https://www.selenium.dev/selenium/web/web-form.html)     | Passed · 5 fields · undo ✓   | Passed · 5 fields · undo ✓ |
+| [Selenium form page](https://www.selenium.dev/selenium/web/formPage.html)    | Passed · 4 fields · undo ✓   | Passed · 4 fields · undo ✓ |
+| [Playwright TodoMVC](https://demo.playwright.dev/todomvc/) (React-style app) | Passed · 1 field · undo ✓    | Passed · 1 field · undo ✓  |
+| Native controls, preserving an existing answer                               | Passed                       | Passed                  |
+| React controlled inputs and rendered state                                   | Passed                       | Passed                  |
+| Duplicate labels, editable text and multiple selection                       | Passed                       | Passed                  |
+| Custom ARIA controls and an open shadow root                                 | Passed                       | Passed                  |
+| Page text trying to override the user's instructions                         | Passed                       | Passed                  |
 
-AI generation took **1–4 seconds** per page. The repository also runs **81 unit tests** and **25 Chromium integration checks** on every push. Details in the [test report](docs/testing.md).
+AI generation took **1–4 seconds** per page with Groq and **2–7 seconds** with OpenAI. The repository also runs **81 unit tests** and **25 Chromium integration checks** on every push. Details in the [test report](docs/testing.md).
 
 ## How it works
 
