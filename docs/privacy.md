@@ -1,6 +1,6 @@
 # Privacy and execution notes
 
-This document describes the current implementation. The extension is experimental and executes AI-generated JavaScript on the page after an explicit Fill click.
+This document describes the current implementation. The extension executes AI-generated JavaScript on the page after an explicit Fill click.
 
 ## What leaves the browser
 
@@ -24,6 +24,7 @@ The API key is sent to the chosen provider as the request’s authorization head
 | API keys                                 | Chrome session storage, accessible only to trusted extension contexts. They are not saved to local or sync storage. The popup’s Forget action removes the chosen provider’s key.                                                                                                                                       |
 | Provider and model preferences           | Chrome local storage, restricted to trusted extension contexts.                                                                                                                                                                                                                                                        |
 | Last per-tab outcome                     | Session storage: verification counts, field labels/issues, errors, model, timing and the tab URL used to associate the result with its page. Model-generated issue or error text may contain page information. The associated URL may include the original query/fragment. Closing the tab removes its stored outcome. |
+| Undo checkpoint                          | Previous and filled values of the captured fields, held in the page's extension-only isolated world. Never written to extension storage; gone on reload, navigation or tab close. |
 | Prompt, captured HTML and generated code | Used while the request runs; not deliberately saved to extension persistent storage. The provider receives the prompt and snapshot.                                                                                                                                                                                    |
 
 The extension does not log keys, prompt bodies, captured HTML or generated code. Test tools create local output files and temporary profiles; their artifacts are a separate development concern, described in [testing.md](testing.md).
@@ -40,6 +41,6 @@ This separation protects extension context; it does not make arbitrary generated
 
 Before execution, the extension checks the current tab URL, targets the captured document, and compares captured field values with live values. Afterward, a separate content-script check compares each valid reported field with the actual DOM value and native validity. Invalid or duplicate report IDs fail verification.
 
-Verification checks the script’s reported fields. It does not audit every side effect, prove that the page respected a field update, or guarantee that the model obeyed all instructions. A partly successful script can leave edits behind. There is no rollback, no execution-time cancellation, and no mandatory code preview. After 15 seconds without an execution result, the extension reports uncertainty and blocks another fill until a reload. It cannot forcibly interrupt arbitrary JavaScript, especially a synchronous infinite loop. Reloading or navigating also clears the previous completion summary.
+Verification checks the script’s reported fields and highlights each one on the page. It does not audit every side effect of the generated code. **Undo last fill** restores the previous values of changed text, select, checkbox and plain editable fields, including after a partly failed run; fields you edited after the fill are kept, and page actions triggered by the code (for example a click that loads more content) are not reversed. Cancel stops generation before execution; there is no mandatory code preview. After 15 seconds without an execution result, the extension reports uncertainty and blocks another fill until a reload. It cannot forcibly interrupt arbitrary JavaScript, especially a synchronous infinite loop. Reloading or navigating also clears the previous completion summary.
 
-Use this personal experimental tool on pages whose data and possible edits you understand. Review the entire result and submit manually. Live Groq evidence covers synthetic fixtures only; it does not establish reliability on every website. The full native Chrome toolbar/site-permission approval flow remains unverified.
+Review the result and submit the form yourself.

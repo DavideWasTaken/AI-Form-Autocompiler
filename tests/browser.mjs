@@ -176,6 +176,10 @@ try {
         }
         if (mode === "delay") await new Promise((r) => setTimeout(r, 1800));
         const payload = route.request().postDataJSON();
+        if (payload.max_completion_tokens === 256) {
+          await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({choices:[{finish_reason:"stop",message:{content:"OK"}}]})});
+          return;
+        }
         const data = JSON.parse(payload.messages[1].content);
         const field = data.page.fields.find((f) => f.label === "Full name");
         const code =
@@ -225,6 +229,15 @@ try {
         assert.equal(await form.locator("#name").inputValue(), "");
       },
     );
+    await check("guided connection check uses selected saved key without changing page fields", async () => {
+      mode='fill';
+      await ui.locator('#check-provider').click();
+      await ui.locator('#connection-status').filter({hasText:'Connected'}).waitFor();
+      assert.equal(await form.locator('#name').inputValue(),'');
+      assert.match(await ui.locator('#ready-key').innerText(),/saved/);
+      assert.match(await ui.locator('#ready-site').innerText(),/ready/);
+      assert.match(await ui.locator('#ready-scripts').innerText(),/ready/);
+    });
     await check("runtime failures do not report success", async () => {
       mode = "throw";
       const r = await send({
@@ -419,6 +432,80 @@ try {
       await form.reload();
       const r = await send({ action: "status" });
       assert.equal(r.result.outcome, null);
+    });
+    await check("undo restores values and preserves edits made after filling", async () => {
+      await form.goto(lab.url);
+      let r = await send({action:"fill",provider:"openai",prompt:"My full name is Davide."});
+      assert.equal(r.ok,true,r.error);
+      let state = await send({action:"status"});
+      assert.equal(state.result.recovery.canUndo,true);
+      r = await send({action:"undo"});
+      assert.equal(r.ok,true,r.error);
+      assert.equal(r.result.restored,1);
+      assert.equal(await form.locator('#name').inputValue(),'');
+      await send({action:"fill",provider:"openai",prompt:"My full name is Davide."});
+      await form.locator('#name').fill('User correction');
+      r = await send({action:"undo"});
+      assert.equal(r.ok,true,r.error);
+      assert.equal(await form.locator('#name').inputValue(),'User correction');
+      assert.ok(r.result.conflicts >= 1);
+    });
+    await check("failed generation preserves undo and navigation discards it", async () => {
+      await form.goto(lab.url);
+      await send({action:"fill",provider:"openai",prompt:"My full name is Davide."});
+      mode='401';
+      const failure = await send({action:"fill",provider:"openai",prompt:"Replace my name."});
+      assert.equal(failure.ok,false);
+      mode='fill';
+      const undo = await send({action:'undo'});
+      assert.equal(undo.ok,true,undo.error);
+      assert.equal(await form.locator('#name').inputValue(),'');
+      await form.reload();
+      const state = await send({action:'status'});
+      assert.equal(Boolean(state.result.recovery?.canUndo),false);
+    });
+    await check("undo updates React controlled text and checkbox state", async () => {
+      await form.goto(lab.url+'/react');
+      await form.locator('#name').waitFor();
+      scriptedCode="const filled=[];for(const id of ['name','city','enabled']){const e=af.all().find(e=>e.id===id);const key=e.getAttribute('data-af-id');const value=id==='enabled'?true:id==='name'?'Davide':'Milan';af.set(key,value);filled.push({id:key,value});}return {filled,skipped:[]};";
+      const r=await send({action:'fill',provider:'openai',prompt:'Name Davide, city Milan, enable notifications.'});
+      assert.equal(r.ok,true,r.error);
+      assert.deepEqual(JSON.parse(await form.locator('#state').innerText()),{name:'Davide',city:'Milan',enabled:true});
+      const undo=await send({action:'undo'});
+      assert.equal(undo.ok,true,undo.error);
+      assert.equal(undo.result.restored,3);
+      assert.deepEqual(JSON.parse(await form.locator('#state').innerText()),{name:'',city:'',enabled:false});
+      scriptedCode=undefined;
+    });
+    await check("partial execution failure still has an undo checkpoint", async () => {
+      await form.goto(lab.url);
+      scriptedCode="const el=af.all().find(e=>e.id==='name');af.set(el.getAttribute('data-af-id'),'Partial');throw new Error('test failure');";
+      const r=await send({action:'fill',provider:'openai',prompt:'Fill my name.'});
+      assert.equal(r.ok,false);
+      assert.equal(await form.locator('#name').inputValue(),'Partial');
+      const undo=await send({action:'undo'});
+      assert.equal(undo.ok,true,undo.error);
+      assert.equal(await form.locator('#name').inputValue(),'');
+      scriptedCode=undefined;
+    });
+    await check("failed-only retry targets failed fields and empty scope keeps existing answers", async () => {
+      await form.goto(lab.url);
+      mode='lie';
+      const lie=await send({action:'fill',provider:'openai',prompt:'My full name is Davide.'});
+      assert.equal(lie.result.failed.length,1);
+      mode='fill';
+      const retry=await send({action:'fill',provider:'openai',prompt:'My full name is Davide.',scope:'failed'});
+      assert.equal(retry.ok,true,retry.error);
+      assert.equal(retry.result.total,1);
+      assert.equal(await form.locator('#existing').inputValue(),'KEEP-42');
+      await form.goto(lab.url);
+      const empty=await send({action:'fill',provider:'openai',prompt:'My full name is Davide.',scope:'empty'});
+      assert.equal(empty.ok,true,empty.error);
+      assert.equal(await form.locator('#existing').inputValue(),'KEEP-42');
+      const cleared=await send({action:'clear-highlights'});
+      assert.equal(cleared.ok,true,cleared.error);
+      const state=await send({action:'status'});
+      assert.equal(state.result.recovery.canUndo,true);
     });
     await check(
       "non-settling scripts time out and block reruns until reload",

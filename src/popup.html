@@ -13,9 +13,13 @@
         <h1>Form Autocompiler</h1>
         <p>Your words. The right fields.</p>
       </div>
-      <span class="badge">LAB</span>
     </header>
     <main>
+      <ul id="readiness" aria-label="Setup checklist">
+        <li id="ready-scripts">User scripts · checking…</li>
+        <li id="ready-key">API key · checking…</li>
+        <li id="ready-site">Site access · checking…</li>
+      </ul>
       <div id="setup" class="notice" hidden>
         Enable <strong>Allow User Scripts</strong> in this extension’s
         details.<button id="settings" class="link">
@@ -57,12 +61,33 @@
           prompt.
         </p>
       </details>
+      <div class="connection-row">
+        <button id="check-provider" class="secondary">Test connection</button>
+        <span id="connection-status" role="status">Not tested</span>
+      </div>
+      <p class="hint connection-hint">Sends a small paid request to your provider. No page data is sent.</p>
+      <label for="scope">Fields to fill</label>
+      <select id="scope">
+        <option value="all">All eligible fields</option>
+        <option value="empty">Empty fields only</option>
+        <option value="failed" id="scope-failed" disabled>Retry failed fields</option>
+      </select>
+      <p class="hint scope-hint">To correct an answer, choose all fields and name the field and replacement in your prompt.</p>
       <button id="fill" class="primary">Fill this page <span>↗</span></button
       ><button id="cancel" class="secondary" hidden>Cancel generation</button>
       <div id="status" role="status" aria-live="polite">
         Ready when you are.
       </div>
       <ul id="issues" hidden></ul>
+      <section id="recovery" hidden aria-label="Last fill results">
+        <div class="recovery-actions">
+          <button id="undo" class="secondary" disabled>Undo last fill</button>
+          <button id="clear-highlights" class="link">Clear highlights</button>
+        </div>
+        <p class="legend"><span class="verified">● Verified</span> <span class="failed">● Failed</span> <span class="skipped">● Skipped</span> <span class="changed">● Changed</span></p>
+        <ul id="field-results"></ul>
+        <p class="hint">Undo restores supported field values. Later edits are kept. Custom controls and other page actions may not be reversible.</p>
+      </section>
       <details>
         <summary>How it works</summary>
         <p class="hint">
@@ -72,7 +97,7 @@
           unless your prompt asks to replace them.
         </p>
         <p class="hint">
-          Experimental. AI-generated code can make mistakes or perform
+          AI-generated code can make mistakes or perform
           unintended actions. Top-level web pages only; embedded forms and some
           custom controls are unsupported.
         </p>

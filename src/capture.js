@@ -1,6 +1,8 @@
 // Self-contained: Chrome serializes this function into an isolated content world.
-export function capturePage(runId, maxChars = 100000) {
+export function capturePage(runId, maxChars = 100000, scope = { mode: "all" }) {
   const attr = "data-af-id";
+  if (!["all", "empty", "failed"].includes(scope.mode)) throw new Error("Unknown fill scope.");
+  const failedIds = new Set(scope.failedIds || []);
   const fields = [];
   const selector =
     'input,textarea,select,[contenteditable="true"],[role="textbox"],[role="combobox"],[role="checkbox"],[role="radio"],[role="switch"],[role="listbox"]';
@@ -45,6 +47,7 @@ export function capturePage(runId, maxChars = 100000) {
     return el.textContent.trim();
   }
   function prepare(root) {
+    const retryNodes = new Set([...root.querySelectorAll(`[${attr}]`)].filter(el => failedIds.has(el.getAttribute(attr))));
     // Remove stale or page-supplied markers even from elements we never capture.
     for (const el of root.querySelectorAll(`[${attr}]`))
       el.removeAttribute(attr);
@@ -61,6 +64,13 @@ export function capturePage(runId, maxChars = 100000) {
         )
       )
         continue;
+      if (scope.mode === "failed" && !retryNodes.has(el)) continue;
+      if (scope.mode === "empty") {
+        const current = value(el);
+        const empty = current === false || (typeof current === "string" && !current.trim()) || (Array.isArray(current) && current.length === 0);
+        if (!empty) continue;
+        if (el.matches('input[type="radio"]') && el.name && [...root.querySelectorAll('input[type="radio"]')].some(other => other.name === el.name && other.form === el.form && other.checked)) continue;
+      }
       const id = `${runId}-${fields.length}`;
       el.setAttribute(attr, id);
       const labelled = (el.getAttribute("aria-labelledby") || "")
@@ -161,7 +171,7 @@ export function capturePage(runId, maxChars = 100000) {
     );
   if (fields.length === 0)
     throw new Error(
-      "No editable fields found in the main page. Embedded frames are not supported yet.",
+      scope.mode === "empty" ? "No empty fields found. Choose all fields to correct an existing answer." : scope.mode === "failed" ? "No failed fields remain on this page. Choose another scope." : "No editable fields found in the main page. Embedded frames are not supported yet.",
     );
   return {
     html,
@@ -169,6 +179,7 @@ export function capturePage(runId, maxChars = 100000) {
     title: document.title.slice(0, 300),
     url: location.origin + location.pathname,
     runId,
+    scope: scope.mode,
     frameCount: document.querySelectorAll("iframe").length,
   };
 }

@@ -67,6 +67,13 @@ test("messages define DOM helper and return contract and treat page content as d
   assert.deepEqual(input.page, snapshot);
 });
 
+test("messages restrict modifications to captured target IDs for scoped filling", () => {
+  const messages = buildMessages({ ...snapshot, scope: "empty" }, "My name is Ada");
+  assert.match(messages[0].content, /modify only.*captured target IDs/i);
+  assert.match(messages[0].content, /scope.*empty.*failed/i);
+  assert.equal(JSON.parse(messages[1].content).page.scope, "empty");
+});
+
 for (const provider of ["openai", "groq"])
   test(`${provider} sends one authenticated request and returns code and timing`, async () => {
     let requests = 0;
